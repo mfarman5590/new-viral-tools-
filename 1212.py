@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
-import yt_dlp
+import requests
+from bs4 import BeautifulSoup
 import time
 import random
 
 # Streamlit App Title
-st.title("YouTube Viral Topics Tool (Without API)")
+st.title("YouTube Viral Topics Tool (Without API & yt-dlp)")
 
 # Input Fields
 niche_options = {
@@ -27,39 +28,27 @@ tags_input = st.text_area(f"🏷 Modify Hashtags for {niche}:", default_tags)
 keywords = [niche.strip()]
 hashtags = [tag.strip() for tag in tags_input.split(",") if tag.strip()]
 
-# yt-dlp Function
-def get_youtube_search_results(keyword, max_results=5):
-    """Fetch multiple trending videos for a given keyword using yt_dlp"""
-    ydl_opts = {
-        'quiet': True,
-        'format': 'best',
-        'noplaylist': True,
-        'default_search': f'ytsearch{max_results}',  # Search mode
-    }
-
+# Web Scraping Function
+def get_youtube_search_results(keyword, max_results=20):
+    search_url = f"https://www.youtube.com/results?search_query={keyword.replace(' ', '+')}"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(search_url, headers=headers)
+    
+    if response.status_code != 200:
+        return f"❌ Failed to fetch data. Status Code: {response.status_code}"
+    
+    soup = BeautifulSoup(response.text, "html.parser")
     results = []
     
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        try:
-            info = ydl.extract_info(keyword, download=False)
-            
-            for entry in info.get('entries', []):
-                results.append({
-                    "Title": entry.get("title", "N/A"),
-                    "Channel": entry.get("uploader", "N/A"),
-                    "Views": entry.get("view_count", "N/A"),
-                    "Likes": entry.get("like_count", "N/A"),
-                    "Upload Date": entry.get("upload_date", "N/A"),
-                    "Description": entry.get("description", "N/A")[:500],
-                    "Duration": entry.get("duration", "N/A"),
-                    "Thumbnail": entry.get("thumbnail", "N/A"),
-                    "URL": entry.get("webpage_url", "N/A")
-                })
-                
-            return results
-        except Exception as e:
-            st.error(f"❌ Error fetching data: {e}")
-            return []
+    for video in soup.select("h3 a")[:max_results]:
+        video_url = f"https://www.youtube.com{video['href']}"
+        title = video.text.strip()
+        results.append({
+            "Title": title,
+            "URL": video_url
+        })
+    
+    return results
 
 # Fetch Data Button
 if st.button("🔍 Fetch Data"):
@@ -71,22 +60,18 @@ if st.button("🔍 Fetch Data"):
             all_results = []
 
             for keyword in keywords:
-                search_results = get_youtube_search_results(keyword, max_results=5)
+                search_results = get_youtube_search_results(keyword, max_results=20)
                 all_results.extend(search_results)
-                
-                # Random delay between searches to avoid detection
-                time.sleep(random.uniform(2, 5))
+                time.sleep(random.uniform(1, 3))  # Adding a delay to prevent IP block
 
             if all_results:
                 df = pd.DataFrame(all_results)
                 st.success(f"✅ Found {len(all_results)} trending videos!")
                 st.dataframe(df)
 
-                # Show thumbnails
+                # Show video links
                 for result in all_results:
-                    st.image(result["Thumbnail"], caption=result["Title"], width=200)
                     st.markdown(f"**[{result['Title']}]({result['URL']})**")
-                    st.write(f"📺 Channel: {result['Channel']} | 👀 Views: {result['Views']}")
                     st.write(f"🏷 Hashtags: {', '.join(hashtags)}")
                     st.write("----")
 

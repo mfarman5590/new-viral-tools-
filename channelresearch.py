@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 # YouTube API Key
-API_KEY = "AIzaSyD_v5XZGyni8aOOd70L3doJhdKmWVSqklQ"
+API_KEY = "AIzaSyCDJ3jsuuQlkzoCdr1J3lUhG5LrZh1AMLM"
 YOUTUBE_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search"
 YOUTUBE_VIDEO_URL = "https://www.googleapis.com/youtube/v3/videos"
 YOUTUBE_CHANNEL_URL = "https://www.googleapis.com/youtube/v3/channels"
